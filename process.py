@@ -10,6 +10,11 @@ from io import BytesIO
 # 2 cannot easiliy be solved because using chnunked encoding with a generator, the library starts sending the body immediately.
 # This results in the unneccesary sending of the body before being redirected to the appropriate node.
 
+# This should be in config file
+swarmhost =
+sourcebucket =
+targetbucket =
+domain=
 
 # FFPipeReader
 # A read callback returning zero bytes flags the eof and results in curl finalizing the chunked POST operation.
@@ -18,7 +23,7 @@ from io import BytesIO
 # abort the transfer if the empty buffer is due to an error.
 class FFPipeReader:
     general_opt = [ '-loglevel' , 'error', '-threads', '1' ]
-    uribase = 'http://<swarmhost>/<source_bucket>/'
+    uribase = f'http://{swarmhost}/{sourcebucket}/'
 
     def __init__(self, task):
         cmd = [ '/usr/bin/ffmpeg', '-i', self.uribase + task.name ]
@@ -74,7 +79,7 @@ def transcode(task):
     name = task.name.replace('.mp4', f'.{task.target_ext}')
     try:
        c = postrequest()
-       c.setopt(c.URL,f"http://<swarmhost>/<target_bucket>/{name}?domain=<domain>")
+       c.setopt(c.URL,f"http://{swarmhost}/{targetbucket}/{name}?domain={domain}")
        c.setopt(c.HTTPHEADER, [ f'Content-Type: {task.target_mime_type}' ])
        c.setopt(c.READFUNCTION, ff.read_callback)
        c.setopt(c.WRITEDATA, response)
@@ -90,10 +95,10 @@ def transcode(task):
 def getmediaobject():
     with open('./browses.txt','r') as mediaobjects:
         while line:=mediaobjects.readline():
-            yield line.strip()
+            yield (line.strip())
 
 pool=Pool(8)
-p = pool.imap_unordered(transcode,ExtractAudio(getmediaobject()))
+p = pool.imap_unordered(transcode,( ExtractAudio(o) for o in getmediaobject()))
 for i in p:
     print(i)
 
